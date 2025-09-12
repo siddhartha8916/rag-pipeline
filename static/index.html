@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Pipeline Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            surface: '#1e293b',
+                            card: '#334155',
+                            border: '#475569',
+                            text: '#f1f5f9',
+                            muted: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for dark modern theme */
+        .markdown-content {
+            @apply text-gray-100;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            @apply font-bold text-white mb-3;
+        }
+        .markdown-content h1 { @apply text-2xl; }
+        .markdown-content h2 { @apply text-xl; }
+        .markdown-content h3 { @apply text-lg; }
+        .markdown-content p { @apply mb-3 leading-relaxed; }
+        .markdown-content ul, .markdown-content ol { @apply ml-6 mb-3; }
+        .markdown-content li { @apply mb-2; }
+        .markdown-content code { @apply bg-gray-800 text-green-400 px-2 py-1 rounded text-sm font-mono; }
+        .markdown-content pre { @apply bg-gray-900 p-4 rounded-xl overflow-x-auto border border-gray-700; }
+        .markdown-content blockquote { @apply border-l-4 border-blue-500 bg-gray-800 pl-4 py-2 my-3 italic rounded-r; }
+        .markdown-content strong { @apply font-semibold text-white; }
+        .markdown-content em { @apply italic text-blue-300; }
+        .markdown-content a { @apply text-blue-400 hover:text-blue-300 underline; }
+        
+        /* Enhanced typing animation */
+        .typing-indicator {
+            display: inline-block;
+        }
+        
+        .typing-indicator::after {
+            content: '▋';
+            color: #60a5fa;
+            animation: blink 1.2s infinite;
+            font-weight: bold;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* Smooth scrolling */
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+        
+        /* Glassmorphism effect */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+        
+        /* Gradient backgrounds */
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* Pulse animation for status indicators */
+        .pulse-green {
+            animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Chat bubble animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen flex overflow-hidden font-sans">
+    <!-- Left Sidebar - Documents & Sessions -->
+    <div class="w-80 bg-slate-800 border-r border-slate-700 flex flex-col">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-700">
+            <h1 class="text-xl font-bold text-white flex items-center">
+                <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-4.906-1.471L3 21l1.471-5.094A8.955 8.955 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
+                </svg>
+                RAG Pipeline
+            </h1>
+            <div id="healthStatus" class="text-sm text-slate-400 mt-1">
+                <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                Checking status...
+            </div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="p-4 border-b border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Upload Document</h3>
+            <div class="relative">
+                <input type="file" id="fileInput" accept=".pdf" class="hidden">
+                <button onclick="document.getElementById('fileInput').click()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9v.1H7z"></path>
+                    </svg>
+                    Upload PDF
+                </button>
+            </div>
+            <div id="uploadStatus" class="mt-2 text-sm text-slate-400 hidden"></div>
+            <div id="uploadProgress" class="mt-2 hidden">
+                <div class="w-full bg-slate-700 rounded-full h-2">
+                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents List -->
+        <div class="flex-1 overflow-hidden">
+            <div class="p-4">
+                <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Documents</h3>
+                <div id="documentsList" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                    <!-- Documents will be populated here -->
+                </div>
+            </div>
+
+            <!-- Sessions List -->
+            <div class="p-4 border-t border-slate-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">Chat Sessions</h3>
+                    <button id="newSessionBtn" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded transition-colors duration-200">
+                        New
+                    </button>
+                </div>
+                <div id="sessionsList" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                    <!-- Sessions will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="p-4 border-t border-slate-700 bg-slate-800">
+            <div class="text-xs text-slate-400 space-y-1">
+                <div class="flex justify-between">
+                    <span>Total Documents:</span>
+                    <span id="totalDocs">0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Active Session:</span>
+                    <span id="activeSession" class="text-blue-400">New</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col">
+        <!-- Chat Header -->
+        <div class="bg-slate-800 border-b border-slate-700 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Chat Interface</h2>
+                    <p class="text-sm text-slate-400">Ask questions about your uploaded documents</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="clearChatBtn" class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors duration-200">
+                        Clear Chat
+                    </button>
+                    <button id="clearCollectionBtn" class="text-sm bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded transition-colors duration-200">
+                        Clear Collection
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chatContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <div class="text-center text-slate-400 mt-8">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-4.906-1.471L3 21l1.471-5.094A8.955 8.955 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
+                </svg>
+                <p class="text-lg font-medium">Welcome to RAG Pipeline Chat</p>
+                <p class="text-sm mt-2">Upload a PDF document and start asking questions!</p>
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="bg-slate-800 border-t border-slate-700 p-4">
+            <div class="flex space-x-3">
+                <div class="flex-1">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Type your question here..." 
+                        class="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        rows="1"
+                        style="min-height: 44px; max-height: 120px;"
+                    ></textarea>
+                </div>
+                <button 
+                    id="sendBtn" 
+                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center min-w-[100px]"
+                >
+                    <svg id="sendIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                    <div id="sendSpinner" class="hidden">
+                        <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </button>
+            </div>
+            <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+                <span>Press Shift+Enter for new line, Enter to send</span>
+                <span id="streamingStatus" class="hidden flex items-center">
+                    <div class="w-2 h-2 bg-green-400 rounded-full pulse-green mr-2"></div>
+                    Streaming response...
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

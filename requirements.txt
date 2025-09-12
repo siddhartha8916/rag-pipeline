@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+pymilvus
+sentence-transformers
+PyPDF2
+httpx
+pydantic
+numpy
+python-jose[cryptography]
+passlib[bcrypt]

@@ -1,0 +1,200 @@
+/* Custom animations and styles */
+
+/* Typing indicator animation */
+.typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.typing-dots span {
+    height: 4px;
+    width: 4px;
+    background-color: #6b7280;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* Chat message animations */
+.message-enter {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Typing effect for streaming text */
+.typing-text {
+    border-right: 2px solid #3b82f6;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% {
+        border-color: #3b82f6;
+    }
+    51%, 100% {
+        border-color: transparent;
+    }
+}
+
+/* File upload area hover effect */
+#file-drop-zone:hover {
+    background-color: #f9fafb;
+    border-color: #3b82f6;
+}
+
+#file-drop-zone.dragover {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+}
+
+/* Custom scrollbar */
+#messages-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#messages-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+#messages-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+#messages-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Health status indicator pulse animation */
+.health-indicator .bg-green-400 {
+    animation: pulse-green 2s infinite;
+}
+
+.health-indicator .bg-yellow-400 {
+    animation: pulse-yellow 2s infinite;
+}
+
+.health-indicator .bg-red-400 {
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes pulse-yellow {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes pulse-red {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Toast notifications slide in */
+.toast-enter {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.toast-exit {
+    animation: slideOutRight 0.3s ease-in;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Source links styling */
+.source-link {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-decoration: none;
+    margin: 0 2px;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.source-link:hover {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+/* Loading spinner */
+.spinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
