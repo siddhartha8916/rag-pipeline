@@ -132,55 +132,242 @@
                 <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
                 Checking status...
             </div>
-        </div>
-
-        <!-- File Upload Section -->
-        <div class="p-4 border-b border-slate-700">
-            <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Upload Document</h3>
-            <div class="relative">
-                <input type="file" id="fileInput" accept=".pdf" class="hidden">
-                <button onclick="document.getElementById('fileInput').click()" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9v.1H7z"></path>
-                    </svg>
-                    Upload PDF
+            
+            <!-- Tab Navigation -->
+            <div class="flex mt-3 bg-slate-700 rounded-lg p-1">
+                <button id="ragTab" class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-blue-600 text-white">
+                    📄 RAG Chat
+                </button>
+                <button id="analyticsTab" class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 text-slate-300 hover:text-white hover:bg-slate-600">
+                    📊 Analytics
                 </button>
             </div>
-            <div id="uploadStatus" class="mt-2 text-sm text-slate-400 hidden"></div>
-            <div id="uploadProgress" class="mt-2 hidden">
-                <div class="w-full bg-slate-700 rounded-full h-2">
-                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- RAG Content -->
+        <div id="ragContent">
+            <!-- File Upload Section -->
+            <div class="p-4 border-b border-slate-700">
+                <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Upload Document</h3>
+                <div class="relative">
+                    <input type="file" id="fileInput" accept=".pdf" class="hidden">
+                    <button onclick="document.getElementById('fileInput').click()" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9v.1H7z"></path>
+                        </svg>
+                        Upload PDF
+                    </button>
+                </div>
+                <div id="uploadStatus" class="mt-2 text-sm text-slate-400 hidden"></div>
+                <div id="uploadProgress" class="mt-2 hidden">
+                    <div class="w-full bg-slate-700 rounded-full h-2">
+                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Documents List -->
-        <div class="flex-1 overflow-hidden">
-            <div class="p-4">
-                <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Documents</h3>
-                <div id="documentsList" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                    <!-- Documents will be populated here -->
+        <!-- Analytics Content -->
+        <div id="analyticsContent" class="hidden overflow-y-auto h-full custom-scrollbar">
+            <!-- Database Connection Section -->
+            <div class="border-b border-slate-700 flex-shrink-0">
+                <div class="p-4 cursor-pointer hover:bg-slate-800 transition-colors duration-200" onclick="toggleConnectionSection()">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">🔌 Database Connection</h3>
+                        <div class="flex items-center space-x-2">
+                            <span id="connectionIndicator" class="hidden text-xs px-2 py-1 bg-green-800 text-green-300 rounded-full">✓ Connected</span>
+                            <svg id="connectionToggle" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="connectionForm" class="p-4 pt-0 space-y-3">
+                    <!-- Database Type -->
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase tracking-wide">Database Type</label>
+                        <select id="dbType" class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="sqlite">SQLite</option>
+                            <option value="postgresql">PostgreSQL</option>
+                            <option value="mysql" disabled>MySQL (Coming Soon)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- SQLite Database File Path -->
+                    <div id="sqliteSection">
+                        <label class="text-xs text-slate-400 uppercase tracking-wide">Database File Path</label>
+                        <input type="text" id="dbPath" placeholder="C:/path/to/database.db" 
+                               class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- PostgreSQL Connection Fields -->
+                    <div id="postgresqlSection" class="hidden space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-slate-400 uppercase tracking-wide">Host</label>
+                                <input type="text" id="pgHost" placeholder="localhost" 
+                                       class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 uppercase tracking-wide">Port</label>
+                                <input type="number" id="pgPort" placeholder="5432" value="5432"
+                                       class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-wide">Database Name</label>
+                            <input type="text" id="pgDatabase" placeholder="myapp_db" 
+                                   class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-wide">Username</label>
+                            <input type="text" id="pgUsername" placeholder="postgres" 
+                                   class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-wide">Schema</label>
+                            <input type="text" id="pgSchema" placeholder="public" value="public"
+                                   class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 uppercase tracking-wide">Password</label>
+                            <input type="password" id="pgPassword" placeholder="Enter password" 
+                                   class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="text-xs text-slate-500 bg-slate-800 p-2 rounded">
+                            <p class="font-semibold mb-1">💡 Examples:</p>
+                            <div class="space-y-1">
+                                <p>• Local: localhost:5432/myapp_db</p>
+                                <p>• Cloud: myhost.postgres.database.azure.com</p>
+                                <p>• Custom schema: analytics, reports, etc.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Connection Button -->
+                    <button id="testConnectionBtn" 
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Test Connection
+                    </button>
+                    
+                    <div id="connectionStatus" class="text-sm text-slate-400 hidden"></div>
                 </div>
             </div>
 
-            <!-- Sessions List -->
-            <div class="p-4 border-t border-slate-700">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">Chat Sessions</h3>
-                    <button id="newSessionBtn" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded transition-colors duration-200">
-                        New
-                    </button>
+            <!-- Analytics Query Options Section -->
+            <div class="p-4 border-b border-slate-700 flex-shrink-0">
+                <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">⚡ Query Strategy</h3>
+                
+                <div class="space-y-3">
+                    <!-- Query Type Selection -->
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase tracking-wide">Analytics Approach</label>
+                        <select id="queryStrategy" class="w-full mt-1 bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="simple">Simple Query - Fast single query execution</option>
+                            <option value="multi">Multi-Query - Comprehensive analysis with focused subqueries</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Strategy Description -->
+                    <div id="strategyDescription" class="text-xs text-slate-500 bg-slate-800 p-3 rounded">
+                        <div id="simpleDesc" class="strategy-desc">
+                            <p class="font-semibold mb-1 text-blue-300">🚀 Simple Query Strategy:</p>
+                            <p class="mb-1">• Fast execution with single optimized SQL query</p>
+                            <p class="mb-1">• Best for straightforward analysis and reports</p>
+                            <p>• Example: "Show top 10 products by sales"</p>
+                        </div>
+                        <div id="multiDesc" class="strategy-desc hidden">
+                            <p class="font-semibold mb-1 text-green-300">📊 Multi-Query Strategy:</p>
+                            <p class="mb-1">• Generates 3-5 focused subqueries instead of complex JOINs</p>
+                            <p class="mb-1">• Prevents infinite-running queries and performance issues</p>
+                            <p class="mb-1">• Creates comprehensive dashboards with cross-data insights</p>
+                            <p>• Example: "Generate business intelligence dashboard"</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Tips -->
+                    <div class="bg-yellow-900 border border-yellow-700 p-3 rounded text-xs">
+                        <p class="font-semibold mb-1 text-yellow-300">💡 Choose the right strategy:</p>
+                        <p class="text-yellow-200 mb-1">• Use <strong>Simple Query</strong> for basic reports and quick analysis</p>
+                        <p class="text-yellow-200">• Use <strong>Multi-Query</strong> for complex analytics requiring data from multiple sources</p>
+                    </div>
                 </div>
-                <div id="sessionsList" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                    <!-- Sessions will be populated here -->
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-hidden">
+            <!-- RAG Documents & Sessions -->
+            <div id="ragSidebar">
+                <div class="p-4">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Documents</h3>
+                    <div id="documentsList" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                        <!-- Documents will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Sessions List -->
+                <div class="p-4 border-t border-slate-700">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wide">Chat Sessions</h3>
+                        <button id="newSessionBtn" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded transition-colors duration-200">
+                            New
+                        </button>
+                    </div>
+                    <div id="sessionsList" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                        <!-- Sessions will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Database Info -->
+            <div id="analyticsSidebar" class="hidden">
+                <div class="p-4">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Database Tables</h3>
+                    <div id="tablesList" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                        <div class="text-center text-slate-500 py-4">
+                            <svg class="mx-auto h-8 w-8 text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7c0-2.21-1.79-4-4-4H8c-2.21 0-4 1.79-4 4z" />
+                            </svg>
+                            <p class="text-sm">Connect to database to view tables</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Queries -->
+                <div class="p-4 border-t border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Sample Queries</h3>
+                    <div id="sampleQueries" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        <button class="w-full text-left text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 p-2 rounded transition-colors duration-200" 
+                                onclick="ragApp.setSampleQuery('Show me all records from the first table')">
+                            📊 Show all records
+                        </button>
+                        <button class="w-full text-left text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 p-2 rounded transition-colors duration-200"
+                                onclick="ragApp.setSampleQuery('Count total number of rows in each table')">
+                            🔢 Count rows by table
+                        </button>
+                        <button class="w-full text-left text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 p-2 rounded transition-colors duration-200"
+                                onclick="ragApp.setSampleQuery('List farmers earning less than 40 per month')">
+                            👨‍🌾 Low-income farmers
+                        </button>
+                        <button class="w-full text-left text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 p-2 rounded transition-colors duration-200"
+                                onclick="ragApp.setSampleQuery('Show top 10 records by value')">
+                            🏆 Top performers
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Stats Section -->
         <div class="p-4 border-t border-slate-700 bg-slate-800">
-            <div class="text-xs text-slate-400 space-y-1">
+            <!-- RAG Stats -->
+            <div id="ragStats" class="text-xs text-slate-400 space-y-1">
                 <div class="flex justify-between">
                     <span>Total Documents:</span>
                     <span id="totalDocs">0</span>
@@ -190,19 +377,35 @@
                     <span id="activeSession" class="text-blue-400">New</span>
                 </div>
             </div>
+            
+            <!-- Analytics Stats -->
+            <div id="analyticsStats" class="hidden text-xs text-slate-400 space-y-1">
+                <div class="flex justify-between">
+                    <span>Database Status:</span>
+                    <span id="dbStatus" class="text-red-400">Not Connected</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Tables Available:</span>
+                    <span id="tablesCount">0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Last Query:</span>
+                    <span id="lastQueryTime" class="text-slate-500">Never</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Main Chat Area -->
+    <!-- Main Content Area -->
     <div class="flex-1 flex flex-col">
-        <!-- Chat Header -->
+        <!-- Header -->
         <div class="bg-slate-800 border-b border-slate-700 p-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold text-white">Chat Interface</h2>
-                    <p class="text-sm text-slate-400">Ask questions about your uploaded documents</p>
+                    <h2 id="mainTitle" class="text-lg font-semibold text-white">Chat Interface</h2>
+                    <p id="mainSubtitle" class="text-sm text-slate-400">Ask questions about your uploaded documents</p>
                 </div>
-                <div class="flex items-center space-x-2">
+                <div id="ragControls" class="flex items-center space-x-2">
                     <button id="clearChatBtn" class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors duration-200">
                         Clear Chat
                     </button>
@@ -210,21 +413,46 @@
                         Clear Collection
                     </button>
                 </div>
+                <div id="analyticsControls" class="hidden flex items-center space-x-2">
+                    <button id="openAnalyticsBtn" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors duration-200 hidden">
+                        Open in New Window
+                    </button>
+                    <button id="clearAnalyticsBtn" class="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors duration-200">
+                        Clear Results
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Chat Messages -->
-        <div id="chatContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-            <div class="text-center text-slate-400 mt-8">
-                <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-4.906-1.471L3 21l1.471-5.094A8.955 8.955 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
-                </svg>
-                <p class="text-lg font-medium">Welcome to RAG Pipeline Chat</p>
-                <p class="text-sm mt-2">Upload a PDF document and start asking questions!</p>
+        <!-- Main Display Area -->
+        <div class="flex-1 overflow-hidden">
+            <!-- RAG Chat Messages -->
+            <div id="chatContainer" class="h-full overflow-y-auto custom-scrollbar p-4 space-y-4">
+                <div class="text-center text-slate-400 mt-8">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.955 8.955 0 01-4.906-1.471L3 21l1.471-5.094A8.955 8.955 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z"></path>
+                    </svg>
+                    <p class="text-lg font-medium">Welcome to RAG Pipeline Chat</p>
+                    <p class="text-sm mt-2">Upload a PDF document and start asking questions!</p>
+                </div>
+            </div>
+
+            <!-- Analytics Display -->
+            <div id="analyticsContainer" class="h-full overflow-hidden hidden">
+                <div id="analyticsFrame" class="h-full">
+                    <div class="text-center text-slate-400 mt-8 p-8">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium">Database Analytics</p>
+                        <p class="text-sm mt-2">Connect to a database and ask analytical questions!</p>
+                        <p class="text-xs mt-1 text-slate-500">Example: "Show me farmers earning less than $40 per month"</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Chat Input -->
+        <!-- Input Area -->
         <div class="bg-slate-800 border-t border-slate-700 p-4">
             <div class="flex space-x-3">
                 <div class="flex-1">
@@ -238,9 +466,10 @@
                 </div>
                 <button 
                     id="sendBtn" 
-                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center min-w-[100px]"
+                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center min-w-[120px]"
                 >
-                    <svg id="sendIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span id="sendText">Send</span>
+                    <svg id="sendIcon" class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                     </svg>
                     <div id="sendSpinner" class="hidden">
@@ -252,10 +481,10 @@
                 </button>
             </div>
             <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
-                <span>Press Shift+Enter for new line, Enter to send</span>
+                <span id="inputHint">Press Shift+Enter for new line, Enter to send</span>
                 <span id="streamingStatus" class="hidden flex items-center">
                     <div class="w-2 h-2 bg-green-400 rounded-full pulse-green mr-2"></div>
-                    Streaming response...
+                    <span id="streamingText">Streaming response...</span>
                 </span>
             </div>
         </div>

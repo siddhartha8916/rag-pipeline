@@ -150,9 +150,18 @@ class RAGPipeline:
         }
     
     def clear_collection(self) -> bool:
-        """Clear all documents from the collection (use with caution)."""
+        """Clear all documents from the collection (keeps the collection structure)."""
         try:
-            return self.vector_store.delete_collection()
+            return self.vector_store.clear_collection_contents()
         except Exception as e:
             logger.error(f"Error clearing collection: {str(e)}")
+            return False
+    
+    def reset_collection(self) -> bool:
+        """Reset/recreate the collection if it doesn't exist."""
+        try:
+            self.vector_store._ensure_collection()
+            return True
+        except Exception as e:
+            logger.error(f"Error resetting collection: {str(e)}")
             return False

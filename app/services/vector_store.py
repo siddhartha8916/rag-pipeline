@@ -123,9 +123,26 @@ class MilvusVectorStore:
                 self._ensure_collection()
                 return []  # Return empty list since no documents exist yet
             
-            # Ensure collection is loaded
+            # Ensure collection object exists
             if not self.collection:
                 self.collection = Collection(self.collection_name)
+            
+            # Check if collection has any documents
+            try:
+                num_entities = self.collection.num_entities
+                if num_entities == 0:
+                    logger.info("Collection is empty, returning no results")
+                    return []
+            except Exception as entity_error:
+                logger.warning(f"Could not get entity count: {str(entity_error)}")
+                # Continue with search attempt
+            
+            # Ensure collection is loaded
+            try:
+                self.collection.load()
+            except Exception as load_error:
+                logger.warning(f"Collection load warning: {str(load_error)}")
+                # Continue with search attempt
             
             search_params = {
                 "metric_type": "L2",
@@ -155,11 +172,26 @@ class MilvusVectorStore:
             
         except Exception as e:
             logger.error(f"Error searching documents: {str(e)}")
-            raise Exception(f"Search failed: {str(e)}")
+            # If search fails, try to ensure collection exists and return empty results
+            try:
+                self._ensure_collection()
+                return []
+            except:
+                raise Exception(f"Search failed and collection recreation failed: {str(e)}")
     
     def get_collection_stats(self) -> Dict:
         """Get statistics about the collection."""
         try:
+            # Check if collection exists, if not recreate it
+            if not utility.has_collection(self.collection_name):
+                logger.warning(f"Collection '{self.collection_name}' not found. Creating new collection.")
+                self._ensure_collection()
+                return {"total_documents": 0, "collection_name": self.collection_name}
+            
+            # Ensure collection object exists
+            if not self.collection:
+                self.collection = Collection(self.collection_name)
+            
             stats = self.collection.num_entities
             return {
                 "total_documents": stats,
@@ -167,13 +199,51 @@ class MilvusVectorStore:
             }
         except Exception as e:
             logger.error(f"Error getting collection stats: {str(e)}")
-            return {"total_documents": 0, "collection_name": self.collection_name}
+            # Try to recreate collection if there's an error
+            try:
+                self._ensure_collection()
+                return {"total_documents": 0, "collection_name": self.collection_name}
+            except:
+                return {"total_documents": 0, "collection_name": self.collection_name}
+    
+    def clear_collection_contents(self):
+        """Clear all contents from the collection without deleting the collection itself."""
+        try:
+            # Check if collection exists, if not recreate it
+            if not utility.has_collection(self.collection_name):
+                logger.warning(f"Collection '{self.collection_name}' not found. Creating new collection.")
+                self._ensure_collection()
+                return True
+            
+            # Ensure collection object exists
+            if not self.collection:
+                self.collection = Collection(self.collection_name)
+            
+            # Get all entities and delete them
+            # Since we can't delete all at once easily in Milvus, we'll drop and recreate
+            utility.drop_collection(self.collection_name)
+            logger.info(f"Dropped collection '{self.collection_name}' to clear contents")
+            
+            # Recreate the collection
+            self._ensure_collection()
+            logger.info(f"Recreated empty collection '{self.collection_name}'")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing collection contents: {str(e)}")
+            # If clearing fails, try to ensure collection exists
+            try:
+                self._ensure_collection()
+            except:
+                pass
+            raise Exception(f"Failed to clear collection contents: {str(e)}")
     
     def delete_collection(self):
         """Delete the entire collection (use with caution)."""
         try:
             if utility.has_collection(self.collection_name):
                 utility.drop_collection(self.collection_name)
+                self.collection = None
                 logger.info(f"Deleted collection '{self.collection_name}'")
                 return True
             return False
@@ -184,8 +254,14 @@ class MilvusVectorStore:
     def health_check(self) -> bool:
         """Check if Milvus connection is healthy."""
         try:
-            # Try to get collection stats
-            self.collection.num_entities
+            # Check if we can list collections (basic connectivity test)
+            utility.list_collections()
+            
+            # Ensure our collection exists
+            if not utility.has_collection(self.collection_name):
+                logger.info(f"Collection '{self.collection_name}' not found during health check. Creating it.")
+                self._ensure_collection()
+            
             return True
         except Exception as e:
             logger.error(f"Milvus health check failed: {str(e)}")

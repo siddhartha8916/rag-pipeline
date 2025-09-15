@@ -140,9 +140,9 @@ async def reset_collection():
     Useful after clearing the collection or if there are collection issues.
     """
     try:
-        # This will recreate the collection if it doesn't exist
-        health_status = rag_pipeline.health_check()
-        if health_status.get("milvus_connected", False):
+        # Reset/recreate the collection
+        success = rag_pipeline.reset_collection()
+        if success:
             return {"message": "Collection reset successfully. Ready for new documents."}
         else:
             raise HTTPException(status_code=500, detail="Failed to reset collection")

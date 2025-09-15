@@ -1,13 +1,22 @@
 class RAGChatApp {
     constructor() {
+        // RAG properties
         this.currentSessionId = this.generateSessionId();
         this.sessions = this.loadSessions();
         this.documents = [];
         this.isStreaming = false;
         this.currentStreamingMessage = null;
         
+        // Analytics properties
+        this.activeMode = 'rag'; // 'rag' or 'analytics'
+        this.databaseConnection = null;
+        this.isAnalyzing = false;
+        this.tables = [];
+        
         this.initializeElements();
         this.setupEventListeners();
+        this.toggleDatabaseFields(); // Initialize database form fields
+        this.updateStrategyDescription(); // Initialize strategy description
         this.checkHealth();
         this.loadDocuments();
         this.loadSessionsUI();
@@ -27,40 +36,83 @@ class RAGChatApp {
             // Health status
             healthStatus: document.getElementById('healthStatus'),
             
-            // File upload
+            // Mode tabs
+            ragTab: document.getElementById('ragTab'),
+            analyticsTab: document.getElementById('analyticsTab'),
+            
+            // Content sections
+            ragContent: document.getElementById('ragContent'),
+            analyticsContent: document.getElementById('analyticsContent'),
+            ragSidebar: document.getElementById('ragSidebar'),
+            analyticsSidebar: document.getElementById('analyticsSidebar'),
+            
+            // Header elements
+            mainTitle: document.getElementById('mainTitle'),
+            mainSubtitle: document.getElementById('mainSubtitle'),
+            ragControls: document.getElementById('ragControls'),
+            analyticsControls: document.getElementById('analyticsControls'),
+            
+            // Display containers
+            chatContainer: document.getElementById('chatContainer'),
+            analyticsContainer: document.getElementById('analyticsContainer'),
+            analyticsFrame: document.getElementById('analyticsFrame'),
+            
+            // Input elements
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            sendText: document.getElementById('sendText'),
+            sendIcon: document.getElementById('sendIcon'),
+            sendSpinner: document.getElementById('sendSpinner'),
+            inputHint: document.getElementById('inputHint'),
+            streamingStatus: document.getElementById('streamingStatus'),
+            streamingText: document.getElementById('streamingText'),
+            
+            // RAG elements
             fileInput: document.getElementById('fileInput'),
             uploadStatus: document.getElementById('uploadStatus'),
             uploadProgress: document.getElementById('uploadProgress'),
             progressBar: document.getElementById('progressBar'),
-            
-            // Documents
             documentsList: document.getElementById('documentsList'),
             totalDocs: document.getElementById('totalDocs'),
-            
-            // Sessions
             sessionsList: document.getElementById('sessionsList'),
             activeSession: document.getElementById('activeSession'),
             newSessionBtn: document.getElementById('newSessionBtn'),
-            
-            // Chat
-            chatContainer: document.getElementById('chatContainer'),
-            messageInput: document.getElementById('messageInput'),
-            sendBtn: document.getElementById('sendBtn'),
-            sendIcon: document.getElementById('sendIcon'),
-            sendSpinner: document.getElementById('sendSpinner'),
-            streamingStatus: document.getElementById('streamingStatus'),
-            
-            // Controls
             clearChatBtn: document.getElementById('clearChatBtn'),
-            clearCollectionBtn: document.getElementById('clearCollectionBtn')
+            clearCollectionBtn: document.getElementById('clearCollectionBtn'),
+            ragStats: document.getElementById('ragStats'),
+            
+            // Analytics elements
+            dbType: document.getElementById('dbType'),
+            dbPath: document.getElementById('dbPath'),
+            sqliteSection: document.getElementById('sqliteSection'),
+            postgresqlSection: document.getElementById('postgresqlSection'),
+            pgHost: document.getElementById('pgHost'),
+            pgPort: document.getElementById('pgPort'),
+            pgDatabase: document.getElementById('pgDatabase'),
+            pgUsername: document.getElementById('pgUsername'),
+            pgSchema: document.getElementById('pgSchema'),
+            pgPassword: document.getElementById('pgPassword'),
+            testConnectionBtn: document.getElementById('testConnectionBtn'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            tablesList: document.getElementById('tablesList'),
+            clearAnalyticsBtn: document.getElementById('clearAnalyticsBtn'),
+            openAnalyticsBtn: document.getElementById('openAnalyticsBtn'),
+            analyticsStats: document.getElementById('analyticsStats'),
+            dbStatus: document.getElementById('dbStatus'),
+            tablesCount: document.getElementById('tablesCount'),
+            lastQueryTime: document.getElementById('lastQueryTime')
         };
     }
     
     setupEventListeners() {
+        // Mode switching
+        this.elements.ragTab.addEventListener('click', () => this.switchMode('rag'));
+        this.elements.analyticsTab.addEventListener('click', () => this.switchMode('analytics'));
+        
         // File upload
         this.elements.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
         
-        // Chat input
+        // Input handling
         this.elements.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -76,12 +128,22 @@ class RAGChatApp {
         
         this.elements.sendBtn.addEventListener('click', () => this.sendMessage());
         
-        // Session management
+        // RAG controls
         this.elements.newSessionBtn.addEventListener('click', () => this.createNewSession());
-        
-        // Clear buttons
         this.elements.clearChatBtn.addEventListener('click', () => this.clearChat());
         this.elements.clearCollectionBtn.addEventListener('click', () => this.clearCollection());
+        
+        // Analytics controls
+        this.elements.dbType.addEventListener('change', () => this.toggleDatabaseFields());
+        this.elements.testConnectionBtn.addEventListener('click', () => this.testDatabaseConnection());
+        this.elements.clearAnalyticsBtn.addEventListener('click', () => this.clearAnalytics());
+        this.elements.openAnalyticsBtn.addEventListener('click', () => this.openAnalyticsInNewWindow());
+        
+        // Query strategy selector
+        const queryStrategy = document.getElementById('queryStrategy');
+        if (queryStrategy) {
+            queryStrategy.addEventListener('change', () => this.updateStrategyDescription());
+        }
         
         // Periodic health check
         setInterval(() => this.checkHealth(), 30000);
@@ -89,6 +151,320 @@ class RAGChatApp {
     
     generateSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Mode Management
+    switchMode(mode) {
+        this.activeMode = mode;
+        
+        // Update tab styling
+        if (mode === 'rag') {
+            this.elements.ragTab.className = 'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-blue-600 text-white';
+            this.elements.analyticsTab.className = 'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 text-slate-300 hover:text-white hover:bg-slate-600';
+            
+            // Show/hide content
+            this.elements.ragContent.classList.remove('hidden');
+            this.elements.analyticsContent.classList.add('hidden');
+            this.elements.ragSidebar.classList.remove('hidden');
+            this.elements.analyticsSidebar.classList.add('hidden');
+            this.elements.chatContainer.classList.remove('hidden');
+            this.elements.analyticsContainer.classList.add('hidden');
+            this.elements.ragControls.classList.remove('hidden');
+            this.elements.analyticsControls.classList.add('hidden');
+            this.elements.ragStats.classList.remove('hidden');
+            this.elements.analyticsStats.classList.add('hidden');
+            
+            // Update header
+            this.elements.mainTitle.textContent = 'Chat Interface';
+            this.elements.mainSubtitle.textContent = 'Ask questions about your uploaded documents';
+            this.elements.inputHint.textContent = 'Press Shift+Enter for new line, Enter to send';
+            this.elements.sendText.textContent = 'Send';
+            this.elements.messageInput.placeholder = 'Type your question here...';
+            
+        } else if (mode === 'analytics') {
+            this.elements.analyticsTab.className = 'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-blue-600 text-white';
+            this.elements.ragTab.className = 'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 text-slate-300 hover:text-white hover:bg-slate-600';
+            
+            // Show/hide content
+            this.elements.ragContent.classList.add('hidden');
+            this.elements.analyticsContent.classList.remove('hidden');
+            this.elements.ragSidebar.classList.add('hidden');
+            this.elements.analyticsSidebar.classList.remove('hidden');
+            this.elements.chatContainer.classList.add('hidden');
+            this.elements.analyticsContainer.classList.remove('hidden');
+            this.elements.ragControls.classList.add('hidden');
+            this.elements.analyticsControls.classList.remove('hidden');
+            this.elements.ragStats.classList.add('hidden');
+            this.elements.analyticsStats.classList.remove('hidden');
+            
+            // Update header
+            this.elements.mainTitle.textContent = 'Database Analytics';
+            this.elements.mainSubtitle.textContent = 'Connect to a database and generate analytics from natural language queries';
+            this.updateAnalyticsInputHint();
+            this.elements.sendText.textContent = 'Analyze';
+            this.elements.messageInput.placeholder = 'Describe what you want to analyze...';
+        }
+    }
+    
+    // Analytics Methods
+    toggleDatabaseFields() {
+        const dbType = this.elements.dbType.value;
+        
+        if (dbType === 'sqlite') {
+            this.elements.sqliteSection.classList.remove('hidden');
+            this.elements.postgresqlSection.classList.add('hidden');
+        } else if (dbType === 'postgresql') {
+            this.elements.sqliteSection.classList.add('hidden');
+            this.elements.postgresqlSection.classList.remove('hidden');
+        }
+        
+        // Clear connection status when switching
+        this.elements.connectionStatus.classList.add('hidden');
+        this.databaseConnection = null;
+    }
+
+    updateStrategyDescription() {
+        const queryStrategy = document.getElementById('queryStrategy');
+        const simpleDesc = document.getElementById('simpleDesc');
+        const multiDesc = document.getElementById('multiDesc');
+        
+        if (!queryStrategy || !simpleDesc || !multiDesc) return;
+        
+        const isMultiQuery = queryStrategy.value === 'multi';
+        
+        if (isMultiQuery) {
+            simpleDesc.classList.add('hidden');
+            multiDesc.classList.remove('hidden');
+        } else {
+            simpleDesc.classList.remove('hidden');
+            multiDesc.classList.add('hidden');
+        }
+        
+        // Update input hint if in analytics mode
+        if (this.activeMode === 'analytics') {
+            this.updateAnalyticsInputHint();
+        }
+    }
+
+    updateAnalyticsInputHint() {
+        const queryStrategy = document.getElementById('queryStrategy');
+        if (!queryStrategy) return;
+        
+        const isMultiQuery = queryStrategy.value === 'multi';
+        
+        if (isMultiQuery) {
+            this.elements.inputHint.textContent = '📊 Multi-Query: "Generate comprehensive business dashboard with sales and customer insights"';
+        } else {
+            this.elements.inputHint.textContent = '🚀 Simple Query: "Show me farmers earning less than $40 per month"';
+        }
+    }
+
+    toggleConnectionSection() {
+        const connectionForm = document.getElementById('connectionForm');
+        const connectionToggle = document.getElementById('connectionToggle');
+        
+        if (!connectionForm || !connectionToggle) return;
+        
+        if (connectionForm.classList.contains('hidden')) {
+            connectionForm.classList.remove('hidden');
+            connectionToggle.style.transform = 'rotate(0deg)';
+        } else {
+            connectionForm.classList.add('hidden');
+            connectionToggle.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+    updateConnectionIndicator(connected) {
+        const connectionIndicator = document.getElementById('connectionIndicator');
+        if (!connectionIndicator) return;
+        
+        if (connected) {
+            connectionIndicator.classList.remove('hidden');
+            connectionIndicator.textContent = '✓ Connected';
+            connectionIndicator.className = 'text-xs px-2 py-1 bg-green-800 text-green-300 rounded-full';
+        } else {
+            connectionIndicator.classList.add('hidden');
+        }
+    }
+
+    async testDatabaseConnection() {
+        try {
+            const dbType = this.elements.dbType.value;
+            let connection;
+            
+            if (dbType === 'sqlite') {
+                const dbPath = this.elements.dbPath.value.trim();
+                if (!dbPath) {
+                    this.showConnectionStatus('Please enter a database path', 'error');
+                    return;
+                }
+                connection = {
+                    db_type: dbType,
+                    database: dbPath,
+                    file_path: dbPath
+                };
+            } else if (dbType === 'postgresql') {
+                const host = this.elements.pgHost.value.trim();
+                const port = this.elements.pgPort.value.trim();
+                const database = this.elements.pgDatabase.value.trim();
+                const username = this.elements.pgUsername.value.trim();
+                const schema = this.elements.pgSchema.value.trim();
+                const password = this.elements.pgPassword.value;
+                
+                if (!host || !database || !username) {
+                    this.showConnectionStatus('Please fill in all required PostgreSQL fields', 'error');
+                    return;
+                }
+                
+                connection = {
+                    db_type: dbType,
+                    host: host,
+                    port: parseInt(port) || 5432,
+                    database: database,
+                    username: username,
+                    password: password,
+                    db_schema: schema || 'public'
+                };
+            } else {
+                this.showConnectionStatus('Unsupported database type', 'error');
+                return;
+            }
+            
+            this.elements.testConnectionBtn.disabled = true;
+            this.elements.testConnectionBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Testing...
+            `;
+            
+            const response = await fetch('/analytics/test-connection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ connection })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.databaseConnection = connection;
+                this.tables = result.tables || [];
+                this.showConnectionStatus(`✅ Connected! Found ${result.tables ? result.tables.length : 0} tables`, 'success');
+                this.updateTablesUI(result.tables || []);
+                this.updateAnalyticsStats(true, result.tables ? result.tables.length : 0);
+                
+                // Auto-collapse connection section after successful connection
+                setTimeout(() => {
+                    const connectionForm = document.getElementById('connectionForm');
+                    const connectionToggle = document.getElementById('connectionToggle');
+                    if (connectionForm && connectionToggle) {
+                        connectionForm.classList.add('hidden');
+                        connectionToggle.style.transform = 'rotate(-90deg)';
+                    }
+                }, 2000);
+            } else {
+                this.showConnectionStatus(`❌ ${result.error || result.message}`, 'error');
+                this.updateAnalyticsStats(false, 0);
+            }
+            
+        } catch (error) {
+            console.error('Connection test failed:', error);
+            this.showConnectionStatus(`❌ Connection failed: ${error.message}`, 'error');
+            this.updateAnalyticsStats(false, 0);
+        } finally {
+            this.elements.testConnectionBtn.disabled = false;
+            this.elements.testConnectionBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Test Connection
+            `;
+        }
+    }
+    
+    showConnectionStatus(message, type) {
+        this.elements.connectionStatus.textContent = message;
+        this.elements.connectionStatus.classList.remove('hidden', 'text-slate-400', 'text-green-400', 'text-red-400');
+        
+        switch(type) {
+            case 'success':
+                this.elements.connectionStatus.classList.add('text-green-400');
+                this.updateConnectionIndicator(true);
+                break;
+            case 'error':
+                this.elements.connectionStatus.classList.add('text-red-400');
+                this.updateConnectionIndicator(false);
+                break;
+            default:
+                this.elements.connectionStatus.classList.add('text-slate-400');
+                this.updateConnectionIndicator(false);
+        }
+        
+        setTimeout(() => {
+            if (type !== 'success') {
+                this.elements.connectionStatus.classList.add('hidden');
+            }
+        }, 5000);
+    }
+    
+    updateTablesUI(tables) {
+        if (tables.length === 0) {
+            this.elements.tablesList.innerHTML = `
+                <div class="text-center text-slate-500 py-4">
+                    <svg class="mx-auto h-8 w-8 text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7c0-2.21-1.79-4-4-4H8c-2.21 0-4 1.79-4 4z" />
+                    </svg>
+                    <p class="text-sm">No tables found</p>
+                </div>
+            `;
+        } else {
+            this.elements.tablesList.innerHTML = tables.map(table => `
+                <div class="bg-slate-700 rounded-lg p-3 border border-slate-600 hover:border-slate-500 transition-colors">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2v2z" />
+                        </svg>
+                        <span class="text-sm font-medium text-white">${table}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+    
+    updateAnalyticsStats(connected, tableCount) {
+        this.elements.dbStatus.textContent = connected ? 'Connected' : 'Not Connected';
+        this.elements.dbStatus.className = connected ? 'text-green-400' : 'text-red-400';
+        this.elements.tablesCount.textContent = tableCount;
+    }
+    
+    setSampleQuery(query) {
+        this.elements.messageInput.value = query;
+        this.elements.messageInput.style.height = 'auto';
+        this.elements.messageInput.style.height = Math.min(this.elements.messageInput.scrollHeight, 120) + 'px';
+        this.elements.messageInput.focus();
+    }
+    
+    clearAnalytics() {
+        this.elements.analyticsFrame.innerHTML = `
+            <div class="text-center text-slate-400 mt-8 p-8">
+                <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <p class="text-lg font-medium">Database Analytics</p>
+                <p class="text-sm mt-2">Connect to a database and ask analytical questions!</p>
+                <p class="text-xs mt-1 text-slate-500">Example: "Show me farmers earning less than $40 per month"</p>
+            </div>
+        `;
+        this.elements.openAnalyticsBtn.classList.add('hidden');
+    }
+    
+    openAnalyticsInNewWindow() {
+        // This would open the last analytics result in a new window
+        // Implementation would depend on storing the last generated HTML
+        alert('Feature coming soon! Analytics will open in a new window.');
     }
     
     async checkHealth() {
@@ -257,8 +633,16 @@ class RAGChatApp {
     
     async sendMessage() {
         const message = this.elements.messageInput.value.trim();
-        if (!message || this.isStreaming) return;
+        if (!message || this.isStreaming || this.isAnalyzing) return;
         
+        if (this.activeMode === 'rag') {
+            await this.sendRagMessage(message);
+        } else if (this.activeMode === 'analytics') {
+            await this.sendAnalyticsQuery(message);
+        }
+    }
+    
+    async sendRagMessage(message) {
         this.clearWelcomeMessage();
         
         // Add user message to chat
@@ -285,6 +669,156 @@ class RAGChatApp {
         } finally {
             this.setStreamingState(false);
             this.currentStreamingMessage = null;
+        }
+    }
+    
+    async sendAnalyticsQuery(message) {
+        if (!this.databaseConnection) {
+            alert('Please connect to a database first!');
+            return;
+        }
+
+        // Clear input and reset height
+        this.elements.messageInput.value = '';
+        this.elements.messageInput.style.height = 'auto';
+
+        // Get selected query strategy
+        const queryStrategy = document.getElementById('queryStrategy').value;
+        const isMultiQuery = queryStrategy === 'multi';
+
+        // Set analyzing state with strategy indicator
+        this.setAnalyzingState(true, isMultiQuery);
+
+        try {
+            // Choose endpoint based on strategy
+            const endpoint = isMultiQuery ? '/analytics/generate-multi-query-html' : '/analytics/generate-html';
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    connection: this.databaseConnection,
+                    user_query: message
+                })
+            });
+
+            if (response.ok) {
+                const htmlContent = await response.text();
+                this.displayAnalyticsResult(htmlContent, isMultiQuery);
+                this.elements.openAnalyticsBtn.classList.remove('hidden');
+                this.elements.lastQueryTime.textContent = new Date().toLocaleTimeString();
+                
+                // Update analytics stats
+                this.updateAnalyticsStats(isMultiQuery, message);
+            } else {
+                const errorText = await response.text();
+                this.displayAnalyticsError(message, errorText, isMultiQuery);
+            }
+
+        } catch (error) {
+            console.error('Analytics error:', error);
+            this.displayAnalyticsError(message, error.message, isMultiQuery);
+        } finally {
+            this.setAnalyzingState(false);
+        }
+    }    displayAnalyticsResult(htmlContent, isMultiQuery = false) {
+        // Create an iframe to safely display the HTML content
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        iframe.style.backgroundColor = '#0f172a';
+        
+        // Add loading indicator for multi-query
+        if (isMultiQuery) {
+            iframe.title = 'Multi-Query Analytics Dashboard';
+        } else {
+            iframe.title = 'Analytics Dashboard';
+        }
+        
+        this.elements.analyticsFrame.innerHTML = '';
+        this.elements.analyticsFrame.appendChild(iframe);
+        
+        // Write the HTML content to the iframe
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(htmlContent);
+        iframe.contentDocument.close();
+        
+        // Show analytics container
+        this.elements.analyticsContainer.classList.remove('hidden');
+    }
+    
+    displayAnalyticsError(query, error, isMultiQuery = false) {
+        const strategyText = isMultiQuery ? 'Multi-Query Analytics' : 'Simple Analytics';
+        const strategyIcon = isMultiQuery ? '📊' : '🚀';
+        
+        this.elements.analyticsFrame.innerHTML = `
+            <div class="flex items-center justify-center h-full p-8">
+                <div class="text-center max-w-md">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-white mb-2">${strategyIcon} ${strategyText} Error</h3>
+                    <p class="text-sm text-slate-300 mb-4">Query: "${query}"</p>
+                    <div class="text-sm text-red-400 bg-red-900 p-3 rounded mb-4">${error}</div>
+                    ${isMultiQuery ? `
+                    <div class="text-xs text-yellow-300 bg-yellow-900 p-2 rounded mb-4">
+                        💡 Try using Simple Query strategy for this request
+                    </div>
+                    ` : ''}
+                    <button onclick="ragApp.clearAnalytics()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded transition-colors duration-200">
+                        Clear & Try Again
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Show analytics container
+        this.elements.analyticsContainer.classList.remove('hidden');
+    }
+
+    updateAnalyticsStats(isMultiQuery, query) {
+        const strategyText = isMultiQuery ? 'Multi-Query Strategy' : 'Simple Query Strategy';
+        const strategyIcon = isMultiQuery ? '📊' : '🚀';
+        
+        // Ensure query is a string and handle safely
+        const queryString = typeof query === 'string' ? query : String(query || '');
+        const truncatedQuery = queryString.length > 50 ? queryString.substring(0, 50) + '...' : queryString;
+        
+        if (this.elements.analyticsStats) {
+            this.elements.analyticsStats.innerHTML = `
+                <div class="text-xs text-slate-400">
+                    <p><span class="text-blue-300">${strategyIcon} Strategy:</span> ${strategyText}</p>
+                    <p><span class="text-green-300">📝 Query:</span> ${truncatedQuery}</p>
+                    <p><span class="text-yellow-300">⏰ Generated:</span> ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `;
+            this.elements.analyticsStats.classList.remove('hidden');
+        }
+    }
+
+    setAnalyzingState(analyzing, isMultiQuery = false) {
+        this.isAnalyzing = analyzing;
+        
+        if (analyzing) {
+            this.elements.sendBtn.disabled = true;
+            this.elements.sendIcon.classList.add('hidden');
+            this.elements.sendSpinner.classList.remove('hidden');
+            this.elements.streamingStatus.classList.remove('hidden');
+            
+            // Different messages based on query strategy
+            if (isMultiQuery) {
+                this.elements.streamingText.textContent = 'Generating multi-query analytics dashboard...';
+            } else {
+                this.elements.streamingText.textContent = 'Generating analytics...';
+            }
+        } else {
+            this.elements.sendBtn.disabled = false;
+            this.elements.sendIcon.classList.remove('hidden');
+            this.elements.sendSpinner.classList.add('hidden');
+            this.elements.streamingStatus.classList.add('hidden');
         }
     }
     
@@ -579,6 +1113,13 @@ class RAGChatApp {
                 alert('Failed to clear collection. Please try again.');
             }
         }
+    }
+}
+
+// Global functions for HTML onclick handlers
+function toggleConnectionSection() {
+    if (window.ragApp) {
+        window.ragApp.toggleConnectionSection();
     }
 }
 

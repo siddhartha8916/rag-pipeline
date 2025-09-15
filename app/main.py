@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.routers import documents, health
+from app.routers import documents, health, analytics
 from app.config import settings
 import logging
 import uvicorn
@@ -20,8 +20,17 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(
     title="RAG Pipeline API",
-    description="A FastAPI application implementing RAG (Retrieval-Augmented Generation) architecture using Milvus vector database and Perplexity LLM",
-    version="1.0.0",
+    description="""
+    A FastAPI application implementing:
+    1. RAG (Retrieval-Augmented Generation) architecture using Milvus vector database and Perplexity LLM for document-based chat
+    2. Database Analytics pipeline for generating interactive HTML analytics from natural language queries
+    
+    Features:
+    - Upload and chat with PDF documents using RAG
+    - Connect to databases and generate analytics from natural language
+    - Interactive HTML dashboards with charts and insights
+    """,
+    version="1.1.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -43,6 +52,7 @@ if os.path.exists(static_dir):
 # Include routers
 app.include_router(health.router, tags=["Health"])
 app.include_router(documents.router, prefix="/documents", tags=["Documents"])
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 
 # Serve the main page
 @app.get("/")
