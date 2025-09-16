@@ -267,17 +267,64 @@ class AnalyticsPipeline:
             )
     
     def _generate_fallback_queries(self, schema) -> list:
-        """Generate simple fallback queries when LLM fails."""
+        """Generate smart fallback queries when LLM fails."""
         queries = []
         
-        # Limit to first 3 tables to avoid too many queries
-        for i, table in enumerate(schema.tables[:3]):
+        # Analyze table names and create meaningful queries
+        table_priorities = []
+        
+        for table in schema.tables:
             table_name = table["name"]
-            queries.append({
-                "name": f"Sample from {table_name}",
-                "description": f"Sample data from {table_name} table",
-                "sql": f"SELECT * FROM {table_name} LIMIT 50"
-            })
+            columns = table.get("columns", [])
+            
+            # Prioritize tables with common analytics patterns
+            priority = 0
+            if any(word in table_name.lower() for word in ['activity', 'record', 'log', 'summary', 'metrics']):
+                priority += 3
+            if any(word in table_name.lower() for word in ['user', 'customer', 'account', 'profile']):
+                priority += 2
+            if any(word in table_name.lower() for word in ['transaction', 'payment', 'order', 'sale']):
+                priority += 3
+            if any(word in table_name.lower() for word in ['harvest', 'farm', 'produce', 'crop']):
+                priority += 2
+            
+            # Check for date columns
+            has_date_col = any('date' in col.get('name', '').lower() or 'time' in col.get('name', '').lower() 
+                             for col in columns)
+            if has_date_col:
+                priority += 1
+                
+            table_priorities.append((table_name, priority, columns))
+        
+        # Sort by priority and take top 3-4 tables
+        table_priorities.sort(key=lambda x: x[1], reverse=True)
+        
+        for i, (table_name, priority, columns) in enumerate(table_priorities[:4]):
+            # Create more intelligent queries based on table structure
+            date_columns = [col['name'] for col in columns if 'date' in col['name'].lower() or 'time' in col['name'].lower()]
+            
+            if date_columns and len(date_columns) > 0:
+                date_col = date_columns[0]
+                queries.append({
+                    "name": f"Recent {table_name} Activity",
+                    "description": f"Recent records from {table_name} ordered by {date_col}",
+                    "sql": f"SELECT * FROM {table_name} WHERE {date_col} >= '2023-01-01' ORDER BY {date_col} DESC LIMIT 50"
+                })
+            else:
+                queries.append({
+                    "name": f"Sample {table_name} Data",
+                    "description": f"Sample records from {table_name} table",
+                    "sql": f"SELECT * FROM {table_name} LIMIT 50"
+                })
+        
+        # Ensure we have at least 3 queries
+        if len(queries) < 3:
+            for table in schema.tables[len(queries):3]:
+                queries.append({
+                    "name": f"Basic {table['name']} Sample",
+                    "description": f"Basic data sample from {table['name']}",
+                    "sql": f"SELECT * FROM {table['name']} LIMIT 30"
+                })
         
         return queries
     

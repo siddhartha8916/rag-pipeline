@@ -259,12 +259,34 @@ Generate the multi-query JSON response:"""
                     logger.error(f"Perplexity API error {response.status_code}: {error_text}")
                     raise Exception(f"API error {response.status_code}: {error_text}")
                 
-                result = response.json()
+                # Get response content safely
+                response_text = response.text
+                
+                if not response_text or response_text.strip() == "":
+                    logger.error("Empty response from Perplexity API")
+                    raise Exception("Empty response from API")
+                
+                # Parse JSON response
+                try:
+                    result = response.json()
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse API response as JSON: {e}")
+                    logger.error(f"Response content: {response_text[:500]}")
+                    raise Exception("Invalid JSON response from API")
                 
                 if "choices" in result and len(result["choices"]) > 0:
                     json_response = result["choices"][0]["message"]["content"].strip()
                     
-                    # Clean up JSON response
+                    if not json_response:
+                        logger.error("Empty content from API choices")
+                        raise Exception("Empty content from API")
+                    
+                    logger.info(f"Raw API response: {json_response[:200]}...")
+                    
+                    # Enhanced cleanup for various response formats
+                    original_response = json_response
+                    
+                    # Remove markdown code blocks
                     if json_response.startswith('```json'):
                         json_response = json_response[7:]
                     elif json_response.startswith('```'):
@@ -273,25 +295,61 @@ Generate the multi-query JSON response:"""
                     if json_response.endswith('```'):
                         json_response = json_response[:-3]
                     
+                    # Remove any explanatory text before/after JSON
+                    json_response = json_response.strip()
+                    
+                    # Try to find JSON array in the response
+                    start_bracket = json_response.find('[')
+                    end_bracket = json_response.rfind(']')
+                    
+                    if start_bracket != -1 and end_bracket != -1 and end_bracket > start_bracket:
+                        json_response = json_response[start_bracket:end_bracket+1]
+                    
                     try:
                         queries = json.loads(json_response)
                         
                         # Validate the structure
-                        if not isinstance(queries, list) or len(queries) == 0:
-                            raise Exception("Invalid query structure returned")
+                        if not isinstance(queries, list):
+                            logger.error(f"Response is not a list: {type(queries)}")
+                            raise Exception("Response should be a JSON array")
                         
-                        for query in queries:
+                        if len(queries) == 0:
+                            logger.error("Empty query list returned")
+                            raise Exception("No queries generated")
+                        
+                        # Validate and clean up each query
+                        valid_queries = []
+                        for i, query in enumerate(queries):
+                            if not isinstance(query, dict):
+                                logger.warning(f"Query {i} is not a dict, skipping")
+                                continue
+                            
                             if not all(key in query for key in ['name', 'description', 'sql']):
-                                raise Exception("Missing required fields in query object")
+                                logger.warning(f"Query {i} missing required fields: {query.keys()}")
+                                continue
+                            
+                            # Clean up SQL
+                            sql = query['sql'].strip()
+                            if sql.endswith(';'):
+                                sql = sql[:-1]
+                            query['sql'] = sql
+                            
+                            valid_queries.append(query)
                         
-                        logger.info(f"Successfully generated {len(queries)} focused SQL queries")
-                        return queries
+                        if not valid_queries:
+                            raise Exception("No valid queries found in response")
+                        
+                        logger.info(f"Successfully generated {len(valid_queries)} focused SQL queries")
+                        return valid_queries
                         
                     except json.JSONDecodeError as e:
                         logger.error(f"Failed to parse JSON response: {e}")
-                        raise Exception("Invalid JSON response from API")
+                        logger.error(f"Original response: {original_response[:500]}")
+                        logger.error(f"Cleaned JSON content: {json_response}")
+                        raise Exception(f"Invalid JSON response from API: {e}")
                     
                 else:
+                    logger.error(f"Unexpected API response structure: {result}")
                     raise Exception("Unexpected response format from API")
                     
         except Exception as e:
